@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Бизнес-траты</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#16a34a">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+:root{
+  --bg:#f4f5f7; --card:#ffffff; --text:#1a1d21; --muted:#6b7280; --line:#e5e7eb;
+  --accent:#16a34a; --green:#0a7d36; --red:#c0392b; --chip:#eef2f7; --chip-on:#16a34a;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#101214; --card:#1b1e22; --text:#eceff3; --muted:#9aa3ad; --line:#2c3138;
+         --accent:#22c55e; --green:#3ecf6e; --red:#ff6b5e; --chip:#262b31; --chip-on:#15803d; }
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+body{margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+     background:var(--bg); color:var(--text); padding-bottom:90px}
+header{position:sticky; top:0; z-index:5; background:var(--bg);
+       padding:calc(10px + env(safe-area-inset-top)) 14px 8px; border-bottom:1px solid var(--line)}
+h1{font-size:18px; margin:0 0 8px; display:flex; justify-content:space-between; align-items:center}
+h1 .gear{font-size:20px; cursor:pointer; padding:4px 8px; border-radius:8px}
+.nav{display:flex; align-items:center; gap:6px}
+.nav button{border:1px solid var(--line); background:var(--card); color:var(--text); font-size:18px;
+  width:38px; height:38px; border-radius:10px; cursor:pointer}
+.navlabel{flex:1; text-align:center; font-weight:600; font-size:16px}
+.navlabel small{display:block; color:var(--green); font-weight:800; font-size:20px; margin-top:2px}
+main{padding:12px 14px}
+.sec-title{font-size:13px; color:var(--muted); margin:4px 2px 8px; font-weight:600; text-transform:uppercase; letter-spacing:.03em}
+/* category breakdown */
+.catbar{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px;
+  margin-bottom:7px; cursor:pointer; display:flex; align-items:center; gap:10px}
+.catbar.sel{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent)}
+.catbar .ic{width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:18px; flex:0 0 auto}
+.catbar .body{flex:1; min-width:0}
+.catbar .row1{display:flex; justify-content:space-between; font-size:14px; font-weight:600}
+.catbar .row1 .a{color:var(--text)}
+.catbar .track{height:6px; border-radius:3px; background:var(--chip); margin-top:6px; overflow:hidden}
+.catbar .fill{height:100%; border-radius:3px}
+.catbar .pct{font-size:11px; color:var(--muted); margin-top:3px}
+/* transactions */
+.daygrp{margin-top:14px}
+.dayhd{font-size:12px; color:var(--muted); font-weight:600; margin:0 2px 6px; display:flex; justify-content:space-between}
+.tx{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px;
+  margin-bottom:7px; cursor:pointer; display:flex; align-items:center; gap:11px}
+.tx .ic{width:36px; height:36px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:18px; flex:0 0 auto}
+.tx .mid{flex:1; min-width:0}
+.tx .t1{font-size:15px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.tx .t2{font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px}
+.tx .right{text-align:right; flex:0 0 auto}
+.tx .amt{font-size:16px; font-weight:800}
+.tx .cam{font-size:12px; color:var(--muted)}
+.empty{text-align:center; color:var(--muted); padding:46px 14px; font-size:14px; line-height:1.6}
+.monthrow{display:flex; justify-content:space-between; padding:11px 12px; background:var(--card);
+  border:1px solid var(--line); border-radius:10px; margin-bottom:6px; cursor:pointer; font-size:14px}
+.monthrow .s{font-weight:700; color:var(--green)}
+.monthrow.cur{border-color:var(--accent)}
+/* fab + tabs */
+.fab{position:fixed; right:18px; bottom:74px; z-index:6; width:56px; height:56px; border-radius:50%;
+     background:var(--accent); color:#fff; font-size:30px; border:none; cursor:pointer;
+     box-shadow:0 4px 14px rgba(0,0,0,.25)}
+nav.tabs{position:fixed; bottom:0; left:0; right:0; z-index:6; display:flex;
+  background:var(--card); border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs button{flex:1; border:none; background:none; color:var(--muted); font-size:13px;
+  padding:12px 0 10px; cursor:pointer; font-weight:600}
+nav.tabs button.on{color:var(--accent)}
+/* modal */
+.overlay{position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:10; display:none;
+  align-items:flex-end; justify-content:center}
+.overlay.show{display:flex}
+.sheet{background:var(--bg); width:100%; max-width:560px;
+  max-height:calc(100vh - env(safe-area-inset-top) - 28px);
+  max-height:calc(100svh - env(safe-area-inset-top) - 28px); overflow-y:auto;
+  border-radius:18px 18px 0 0; padding:0 16px calc(16px + env(safe-area-inset-bottom))}
+.sheet h2{font-size:17px; margin:0 -16px 12px; padding:16px; display:flex; justify-content:space-between;
+  position:sticky; top:0; background:var(--bg); z-index:3; border-bottom:1px solid var(--line)}
+.sheet h2 .x{cursor:pointer; color:var(--muted); font-size:22px; line-height:1}
+label{font-size:12px; color:var(--muted); display:block; margin:0 0 4px 2px}
+.frow{display:flex; gap:8px; margin-bottom:11px}
+.frow>*{flex:1}
+input,select,textarea{width:100%; padding:11px 12px; font-size:16px; border-radius:10px;
+  border:1px solid var(--line); background:var(--card); color:var(--text)}
+textarea{min-height:70px; resize:vertical; font-family:inherit}
+.amtbig{font-size:30px; font-weight:800; text-align:center; padding:14px}
+.chips{display:flex; gap:7px; flex-wrap:wrap; margin:0 0 12px}
+.chips .ch{background:var(--chip); border:1px solid var(--line); border-radius:18px;
+  padding:8px 13px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px}
+.chips .ch.on{background:var(--chip-on); color:#fff; border-color:var(--chip-on)}
+.btn{width:100%; padding:14px; font-size:16px; font-weight:700; color:#fff; background:var(--accent);
+  border:none; border-radius:12px; cursor:pointer; margin-top:4px}
+.btn.ghost{background:none; color:var(--red); border:1px solid var(--red); margin-top:8px}
+.btn.sec{background:var(--card); color:var(--text); border:1px solid var(--line); margin-top:8px}
+.photo-wrap{margin:0 0 12px}
+.photo-thumb{width:100%; max-height:220px; object-fit:contain; border-radius:10px; border:1px solid var(--line); background:var(--card); display:block}
+.photo-actions{display:flex; gap:8px; margin-top:6px}
+.photo-actions button{flex:1}
+.setrow{display:flex; align-items:center; gap:8px; margin-bottom:6px; background:var(--card);
+  border:1px solid var(--line); border-radius:10px; padding:9px 11px}
+.setrow .nm{flex:1; font-size:14px; font-weight:600; display:flex; align-items:center; gap:8px}
+.setrow .del{border:none; background:none; color:var(--red); font-size:18px; cursor:pointer; padding:2px 6px}
+.setrow .edit{border:none; background:none; color:var(--accent); font-size:15px; cursor:pointer; padding:2px 6px}
+.subwrap{margin:0 0 10px 14px; padding-left:10px; border-left:2px solid var(--line)}
+.subrow{display:flex; align-items:center; gap:6px; margin-bottom:5px; font-size:13px}
+.subrow .nm{flex:1}
+.subrow .del{border:none; background:none; color:var(--red); font-size:16px; cursor:pointer}
+.addline{display:flex; gap:7px; margin-bottom:14px}
+.addline input{flex:1}
+.addline button{flex:0 0 92px}
+.toast{position:fixed; left:50%; transform:translateX(-50%); bottom:120px; z-index:30;
+  background:var(--text); color:var(--bg); padding:10px 18px; border-radius:20px; font-size:14px;
+  opacity:0; transition:opacity .25s; pointer-events:none; max-width:90%; text-align:center}
+.toast.show{opacity:1}
+.hint{color:var(--muted); font-size:12px; margin:6px 2px 14px; line-height:1.5}
+.imgview{position:fixed; inset:0; background:rgba(0,0,0,.9); z-index:40; display:none; align-items:center; justify-content:center; padding:16px}
+.imgview.show{display:flex}
+.imgview img{max-width:100%; max-height:100%; object-fit:contain}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span id="appTitle">Бизнес-траты</span><span class="gear" id="gearBtn">⚙︎</span></h1>
+  <div class="nav">
+    <button id="navPrev">‹</button>
+    <div class="navlabel" id="navLabel"></div>
+    <button id="navNext">›</button>
+  </div>
+</header>
+
+<main id="main"></main>
+
+<button class="fab" id="fabAdd">+</button>
+
+<nav class="tabs">
+  <button data-tab="month" class="on">📋 Месяц</button>
+  <button data-tab="report">📊 Отчёт</button>
+</nav>
+
+<!-- transaction form -->
+<div class="overlay" id="txOverlay">
+  <div class="sheet">
+    <h2><span id="txTitle">Новая трата</span><span class="x" data-close="txOverlay">✕</span></h2>
+    <label>Сумма $</label>
+    <input id="fAmt" class="amtbig" type="number" step="any" inputmode="decimal" placeholder="0">
+    <div class="frow">
+      <div><label>Дата</label><input id="fDate" type="date"></div>
+    </div>
+    <label>Категория</label>
+    <div class="chips" id="catChips"></div>
+    <div id="subBlock" style="display:none">
+      <label>Подкатегория</label>
+      <div class="chips" id="subChips"></div>
+    </div>
+    <div class="frow">
+      <div><label>Поставщик (кому/где)</label>
+        <input id="fVendor" list="vendorList" placeholder="Shell, Home Depot…">
+        <datalist id="vendorList"></datalist></div>
+    </div>
+    <div class="frow">
+      <div><label>Счёт / карта (откуда)</label>
+        <input id="fAccount" list="accountList" placeholder="Chase business, наличные…">
+        <datalist id="accountList"></datalist></div>
+    </div>
+    <label>Заметка (необяз.)</label>
+    <textarea id="fNote" placeholder="что купил, детали…"></textarea>
+    <div class="photo-wrap" id="photoWrap" style="display:none">
+      <img id="photoThumb" class="photo-thumb" alt="чек">
+    </div>
+    <input type="file" id="fPhoto" accept="image/*" capture="environment" hidden>
+    <div class="photo-actions">
+      <button class="btn sec" id="photoBtn" style="margin-top:0">📷 Фото чека</button>
+      <button class="btn ghost" id="photoDel" style="margin-top:0; display:none">Убрать фото</button>
+    </div>
+    <button class="btn" id="txSave" style="margin-top:14px">Сохранить</button>
+    <button class="btn ghost" id="txDelete" style="display:none">Удалить трату</button>
+  </div>
+</div>
+
+<!-- settings -->
+<div class="overlay" id="setOverlay">
+  <div class="sheet">
+    <h2><span>Настройки</span><span class="x" data-close="setOverlay">✕</span></h2>
+    <div class="sec-title">Категории</div>
+    <div id="catManage"></div>
+    <div class="addline">
+      <input id="newCat" placeholder="Новая категория">
+      <button class="btn sec" id="addCat" style="margin-top:0">Добавить</button>
+    </div>
+    <div class="sec-title">Поставщики</div>
+    <div id="vendManage"></div>
+    <div class="addline">
+      <input id="newVend" placeholder="Новый поставщик">
+      <button class="btn sec" id="addVend" style="margin-top:0">Добавить</button>
+    </div>
+    <div class="sec-title">Счета / карты</div>
+    <div id="accManage"></div>
+    <div class="addline">
+      <input id="newAcc" placeholder="Новый счёт / карта">
+      <button class="btn sec" id="addAcc" style="margin-top:0">Добавить</button>
+    </div>
+    <div class="sec-title">Данные</div>
+    <div id="sAutosave"></div>
+    <button class="btn sec" id="sBackup">⬇︎ Скачать резервную копию</button>
+    <button class="btn sec" id="sRestore">⬆︎ Восстановить из копии</button>
+    <input type="file" id="sFile" accept=".json" hidden>
+    <p class="hint">Резервная копия включает фото чеков. Время от времени скачивай её — данные хранятся только на этом устройстве.</p>
+  </div>
+</div>
+
+<!-- import choice -->
+<div class="overlay" id="impOverlay">
+  <div class="sheet">
+    <h2><span>Загрузка копии</span><span class="x" data-close="impOverlay">✕</span></h2>
+    <p class="hint" id="impInfo"></p>
+    <button class="btn" id="impMerge">➕ Объединить — добавить недостающее</button>
+    <button class="btn sec" id="impReplace">♻️ Полностью заменить</button>
+    <p class="hint">«Объединить» добавит траты, которых здесь нет (по дате, сумме и поставщику). «Заменить» сотрёт текущее и поставит копию.</p>
+  </div>
+</div>
+
+<div class="imgview" id="imgView"><img id="imgViewImg" alt=""></div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const LS = "bizExpenses.v1";
+
+const DEFAULT_CATS = [
+  {n:"Машина", e:"🚗", c:"#3b82f6", subs:["Заправка","Обслуживание","Страховка","Кредит / лизинг","Парковка и дороги","Мойка","Шины"]},
+  {n:"Инструменты", e:"🧰", c:"#f59e0b", subs:[]},
+  {n:"Страховка", e:"🛡️", c:"#10b981", subs:[]},
+  {n:"Материалы", e:"📦", c:"#8b5cf6", subs:[]},
+  {n:"Связь", e:"📱", c:"#06b6d4", subs:["Телефон","Интернет"]},
+  {n:"Питание", e:"🍔", c:"#ef4444", subs:[]},
+  {n:"Прочее", e:"📋", c:"#64748b", subs:[]},
+];
+const PALETTE = ["#3b82f6","#f59e0b","#10b981","#8b5cf6","#06b6d4","#ef4444","#ec4899","#84cc16","#f97316","#14b8a6","#64748b"];
+
+/* ===== photo store (IndexedDB) ===== */
+const photoDB = {
+  _db:null,
+  open(){ return this._db ? Promise.resolve(this._db) : new Promise((res,rej)=>{
+    const r = indexedDB.open("bizExpenses.ph",1);
+    r.onupgradeneeded = ()=> r.result.createObjectStore("ph");
+    r.onsuccess = ()=>{ this._db=r.result; res(r.result); };
+    r.onerror = ()=> rej(r.error);
+  });},
+  async get(k){ const db=await this.open(); return new Promise(res=>{ const t=db.transaction("ph").objectStore("ph").get(k); t.onsuccess=()=>res(t.result||null); t.onerror=()=>res(null); }); },
+  async set(k,v){ const db=await this.open(); return new Promise(res=>{ const t=db.transaction("ph","readwrite").objectStore("ph").put(v,k); t.onsuccess=()=>res(); t.onerror=()=>res(); }); },
+  async del(k){ const db=await this.open(); return new Promise(res=>{ const t=db.transaction("ph","readwrite").objectStore("ph").delete(k); t.onsuccess=()=>res(); t.onerror=()=>res(); }); },
+  async all(){ const db=await this.open(); return new Promise(res=>{ const out={}; const cur=db.transaction("ph").objectStore("ph").openCursor(); cur.onsuccess=e=>{ const c=e.target.result; if(c){ out[c.key]=c.value; c.continue(); } else res(out); }; cur.onerror=()=>res(out); }); }
+};
+
+/* ===== state ===== */
+let state;
+function load(){
+  try{ state = JSON.parse(localStorage.getItem(LS)); }catch(e){ state=null; }
+  if(!state || !Array.isArray(state.tx)){
+    state = { tx:[], cats:JSON.parse(JSON.stringify(DEFAULT_CATS)), vendors:[], accounts:[] };
+    save();
+  }
+  state.cats = state.cats || JSON.parse(JSON.stringify(DEFAULT_CATS));
+  state.vendors = state.vendors || [];
+  state.accounts = state.accounts || [];
+}
+function save(){ localStorage.setItem(LS, JSON.stringify(state)); scheduleFileWrite(); }
+function catOf(n){ return state.cats.find(c=>c.n===n) || {n, e:"📋", c:"#64748b", subs:[]}; }
+function money(n){ const v=Math.round(Math.abs(n)*100)/100; return (n<0?"−$":"$")+v.toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:2}); }
+
+/* ===== dates ===== */
+function iso(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function fromIso(s){ const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); }
+function monthKey(s){ return s.slice(0,7); }
+const MONTHS=["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
+const MONTHS_SHORT=["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
+const DW=["вс","пн","вт","ср","чт","пт","сб"];
+function monthLabel(mk){ const [y,m]=mk.split("-").map(Number); return MONTHS[m-1][0].toUpperCase()+MONTHS[m-1].slice(1)+" "+y; }
+
+let selMonth = iso(new Date()).slice(0,7);
+let selYear = selMonth.slice(0,4);
+let selCat = null;
+let tab = "month";
+
+/* ===== month view ===== */
+function txOfMonth(mk){ return state.tx.filter(t=>monthKey(t.date)===mk); }
+function renderMonth(){
+  $("navPrev").parentElement.style.display="";
+  const list = txOfMonth(selMonth);
+  const total = list.reduce((s,t)=>s+t.amt,0);
+  $("navLabel").innerHTML = monthLabel(selMonth)+`<small>${money(total)}</small>`;
+
+  // breakdown by category
+  const byCat = {};
+  list.forEach(t=> byCat[t.cat]=(byCat[t.cat]||0)+t.amt);
+  const cats = Object.keys(byCat).sort((a,b)=>byCat[b]-byCat[a]);
+  let html = "";
+  if(!list.length){
+    html = `<div class="empty">За этот месяц трат нет.<br>Нажми <b>+</b>, чтобы добавить.</div>`;
+    $("main").innerHTML = html; bindMonth(); return;
+  }
+  html += `<div class="sec-title">По категориям</div>`;
+  for(const cn of cats){
+    const c = catOf(cn); const sum = byCat[cn]; const pct = total? Math.round(sum/total*100):0;
+    html += `<div class="catbar ${selCat===cn?"sel":""}" data-cat="${esc(cn)}">
+      <div class="ic" style="background:${c.c}22;color:${c.c}">${c.e}</div>
+      <div class="body">
+        <div class="row1"><span>${esc(cn)}</span><span class="a">${money(sum)}</span></div>
+        <div class="track"><div class="fill" style="width:${pct}%;background:${c.c}"></div></div>
+        <div class="pct">${pct}%</div>
+      </div></div>`;
+  }
+
+  // transactions (filtered by selCat)
+  const shown = selCat ? list.filter(t=>t.cat===selCat) : list;
+  html += `<div class="sec-title" style="margin-top:18px">${selCat? "Траты: "+esc(selCat)+" ✕" : "Все траты"}</div>`;
+  const byDate = {};
+  shown.forEach(t=> (byDate[t.date]=byDate[t.date]||[]).push(t));
+  const dates = Object.keys(byDate).sort().reverse();
+  for(const d of dates){
+    const dt = fromIso(d); const dtot = byDate[d].reduce((s,t)=>s+t.amt,0);
+    html += `<div class="daygrp"><div class="dayhd"><span>${dt.getDate()} ${MONTHS_SHORT[dt.getMonth()]}, ${DW[dt.getDay()]}</span><span>${money(dtot)}</span></div>`;
+    for(const t of byDate[d]){
+      const c = catOf(t.cat);
+      const title = t.vendor || t.cat;
+      const sub = [t.cat!==title?t.cat:"", t.sub, t.account].filter(Boolean).join(" · ");
+      html += `<div class="tx" data-id="${t.id}">
+        <div class="ic" style="background:${c.c}22;color:${c.c}">${c.e}</div>
+        <div class="mid"><div class="t1">${esc(title)}</div><div class="t2">${esc(sub)||"&nbsp;"}</div></div>
+        <div class="right"><div class="amt">${money(t.amt)}</div>${t.photo?'<div class="cam">📷 чек</div>':""}</div>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+  $("main").innerHTML = html;
+  bindMonth();
+}
+function bindMonth(){
+  document.querySelectorAll(".catbar[data-cat]").forEach(el=> el.onclick=()=>{
+    const cn = el.dataset.cat; selCat = (selCat===cn)? null : cn; renderMonth();
+  });
+  document.querySelectorAll(".tx[data-id]").forEach(el=> el.onclick=()=> openTx(el.dataset.id));
+  const st = document.querySelector('.sec-title');
+}
+
+/* ===== report view ===== */
+function renderReport(){
+  $("navLabel").parentElement.style.display="";
+  const yr = selYear;
+  const list = state.tx.filter(t=>t.date.slice(0,4)===yr);
+  const total = list.reduce((s,t)=>s+t.amt,0);
+  $("navLabel").innerHTML = `Отчёт за ${yr}<small>${money(total)}</small>`;
+  let html = "";
+  // by category (year)
+  const byCat = {};
+  list.forEach(t=> byCat[t.cat]=(byCat[t.cat]||0)+t.amt);
+  const cats = Object.keys(byCat).sort((a,b)=>byCat[b]-byCat[a]);
+  if(cats.length){
+    html += `<div class="sec-title">Категории за год</div>`;
+    for(const cn of cats){
+      const c=catOf(cn); const sum=byCat[cn]; const pct=total?Math.round(sum/total*100):0;
+      html += `<div class="catbar" style="cursor:default">
+        <div class="ic" style="background:${c.c}22;color:${c.c}">${c.e}</div>
+        <div class="body"><div class="row1"><span>${esc(cn)}</span><span class="a">${money(sum)}</span></div>
+        <div class="track"><div class="fill" style="width:${pct}%;background:${c.c}"></div></div>
+        <div class="pct">${pct}%</div></div></div>`;
+    }
+  }
+  // by month
+  html += `<div class="sec-title" style="margin-top:18px">По месяцам</div>`;
+  for(let m=11;m>=0;m--){
+    const mk = yr+"-"+String(m+1).padStart(2,"0");
+    const ms = state.tx.filter(t=>monthKey(t.date)===mk).reduce((s,t)=>s+t.amt,0);
+    if(ms===0 && !state.tx.some(t=>monthKey(t.date)===mk)) continue;
+    html += `<div class="monthrow ${mk===selMonth?"cur":""}" data-mk="${mk}">
+      <span>${MONTHS[m][0].toUpperCase()+MONTHS[m].slice(1)}</span><span class="s">${money(ms)}</span></div>`;
+  }
+  if(!list.length) html += `<div class="empty">За ${yr} год трат нет.</div>`;
+  // export
+  html += `<div class="sec-title" style="margin-top:18px">Экспорт в Excel</div>`;
+  html += `<button class="btn sec" id="expMonth" style="margin-top:0">📄 Текущий месяц (${monthLabel(selMonth)})</button>`;
+  html += `<button class="btn sec" id="expYear">📄 Весь ${yr} год</button>`;
+  html += `<p class="hint">Excel-файл: дата, категория, подкатегория, поставщик, счёт, сумма, заметка. Фото чеков в файл не попадают (они в резервной копии).</p>`;
+  $("main").innerHTML = html;
+  document.querySelectorAll(".monthrow[data-mk]").forEach(el=> el.onclick=()=>{ selMonth=el.dataset.mk; selCat=null; tab="month"; render(); });
+  $("expMonth").onclick = ()=> exportXlsx(txOfMonth(selMonth), monthLabel(selMonth));
+  $("expYear").onclick = ()=> exportXlsx(list, "Отчёт "+yr);
+}
+
+function render(){
+  document.querySelectorAll("nav.tabs button").forEach(b=> b.classList.toggle("on", b.dataset.tab===tab));
+  $("fabAdd").style.display = "";
+  if(tab==="month") renderMonth(); else renderReport();
+}
+
+/* ===== transaction form ===== */
+let editId=null, formCat=null, formSub=null, formPhoto=null, formPhotoChanged=false;
+function openTx(id){
+  editId = id || null;
+  const t = id ? state.tx.find(x=>x.id===id) : null;
+  $("txTitle").textContent = t ? "Трата" : "Новая трата";
+  $("fAmt").value = t ? t.amt : "";
+  $("fDate").value = t ? t.date : (tab==="month"? selMonth+"-"+String(Math.min(new Date().getDate(), 28)).padStart(2,"0") : iso(new Date()));
+  if(t) $("fDate").value = t.date;
+  else if(selMonth !== iso(new Date()).slice(0,7)) $("fDate").value = selMonth+"-01";
+  else $("fDate").value = iso(new Date());
+  $("fVendor").value = t ? (t.vendor||"") : "";
+  $("fAccount").value = t ? (t.account||"") : "";
+  $("fNote").value = t ? (t.note||"") : "";
+  formCat = t ? t.cat : (state.cats[0]&&state.cats[0].n);
+  formSub = t ? (t.sub||null) : null;
+  formPhoto = null; formPhotoChanged = false;
+  $("photoWrap").style.display="none"; $("photoDel").style.display="none";
+  refreshDatalists();
+  renderCatChips();
+  $("txDelete").style.display = t ? "" : "none";
+  $("txOverlay").classList.add("show");
+  if(t && t.photo){ photoDB.get(t.photo).then(url=>{ if(url && editId===id){ formPhoto=url; showPhoto(url); } }); }
+  if(!t) setTimeout(()=>$("fAmt").focus(), 100);
+}
+function refreshDatalists(){
+  $("vendorList").innerHTML = state.vendors.map(v=>`<option value="${esc(v)}">`).join("");
+  $("accountList").innerHTML = state.accounts.map(v=>`<option value="${esc(v)}">`).join("");
+}
+function renderCatChips(){
+  $("catChips").innerHTML = state.cats.map(c=>`<div class="ch ${c.n===formCat?"on":""}" data-c="${esc(c.n)}"><span>${c.e}</span>${esc(c.n)}</div>`).join("");
+  document.querySelectorAll("#catChips .ch").forEach(el=> el.onclick=()=>{ formCat=el.dataset.c; formSub=null; renderCatChips(); });
+  const c = catOf(formCat);
+  if(c.subs && c.subs.length){
+    $("subBlock").style.display="";
+    $("subChips").innerHTML = c.subs.map(s=>`<div class="ch ${s===formSub?"on":""}" data-s="${esc(s)}">${esc(s)}</div>`).join("");
+    document.querySelectorAll("#subChips .ch").forEach(el=> el.onclick=()=>{ formSub=(formSub===el.dataset.s)?null:el.dataset.s; renderCatChips(); });
+  } else { $("subBlock").style.display="none"; }
+}
+function showPhoto(url){ $("photoThumb").src=url; $("photoWrap").style.display=""; $("photoDel").style.display=""; }
+$("photoBtn").onclick = ()=> $("fPhoto").click();
+$("fPhoto").onchange = ()=>{
+  const f = $("fPhoto").files[0]; if(!f) return;
+  compress(f, url=>{ if(!url){ toast("Не удалось обработать фото"); return; } formPhoto=url; formPhotoChanged=true; showPhoto(url); });
+  $("fPhoto").value="";
+};
+$("photoDel").onclick = ()=>{ formPhoto=null; formPhotoChanged=true; $("photoWrap").style.display="none"; $("photoDel").style.display="none"; };
+$("photoThumb").onclick = ()=>{ if(formPhoto){ $("imgViewImg").src=formPhoto; $("imgView").classList.add("show"); } };
+$("imgView").onclick = ()=> $("imgView").classList.remove("show");
+function compress(file, cb){
+  const img = new Image(); const url = URL.createObjectURL(file);
+  img.onload = ()=>{ URL.revokeObjectURL(url);
+    const max=1200; let w=img.width, h=img.height;
+    if(w>h && w>max){ h=Math.round(h*max/w); w=max; } else if(h>=w && h>max){ w=Math.round(w*max/h); h=max; }
+    const cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+    cv.getContext("2d").drawImage(img,0,0,w,h);
+    try{ cb(cv.toDataURL("image/jpeg",0.6)); }catch(e){ cb(null); }
+  };
+  img.onerror=()=>{ URL.revokeObjectURL(url); cb(null); };
+  img.src = url;
+}
+$("txSave").onclick = async ()=>{
+  const amt = parseFloat($("fAmt").value);
+  if(isNaN(amt) || amt<=0){ toast("Введи сумму"); return; }
+  if(!formCat){ toast("Выбери категорию"); return; }
+  const vendor = $("fVendor").value.trim(), account = $("fAccount").value.trim();
+  let photoId = editId ? (state.tx.find(x=>x.id===editId)||{}).photo || null : null;
+  if(formPhotoChanged){
+    if(formPhoto){ photoId = photoId || ("p"+Date.now().toString(36)+Math.random().toString(36).slice(2,6)); await photoDB.set(photoId, formPhoto); }
+    else { if(photoId) await photoDB.del(photoId); photoId=null; }
+  }
+  const data = { date:$("fDate").value, amt:Math.round(amt*100)/100, cat:formCat, sub:formSub||"",
+                 vendor, account, note:$("fNote").value.trim(), photo:photoId };
+  if(editId){ Object.assign(state.tx.find(x=>x.id===editId), data); }
+  else { data.id="t"+Date.now().toString(36)+Math.random().toString(36).slice(2,6); state.tx.push(data); }
+  if(vendor && !state.vendors.includes(vendor)) state.vendors.push(vendor);
+  if(account && !state.accounts.includes(account)) state.accounts.push(account);
+  state.tx.sort((a,b)=> a.date<b.date?-1:a.date>b.date?1:0);
+  save(); selMonth = monthKey(data.date);
+  $("txOverlay").classList.remove("show"); render(); toast("Сохранено ✓");
+};
+$("txDelete").onclick = async ()=>{
+  if(!confirm("Удалить эту трату?")) return;
+  const t = state.tx.find(x=>x.id===editId);
+  if(t && t.photo) await photoDB.del(t.photo);
+  state.tx = state.tx.filter(x=>x.id!==editId);
+  save(); $("txOverlay").classList.remove("show"); render(); toast("Удалено");
+};
+
+/* ===== settings: categories / vendors / accounts ===== */
+function openSettings(){ renderCatManage(); renderListManage(); renderAutosave(); $("setOverlay").classList.add("show"); }
+function renderCatManage(){
+  $("catManage").innerHTML = state.cats.map((c,i)=>`
+    <div class="setrow"><div class="nm"><span>${c.e}</span>${esc(c.n)}</div>
+      <button class="edit" data-emoji="${i}">😀</button>
+      <button class="edit" data-sub="${i}">＋подкат.</button>
+      <button class="del" data-delc="${i}">✕</button></div>
+    <div class="subwrap" id="subw${i}" style="display:none">
+      ${c.subs.map((s,j)=>`<div class="subrow"><span class="nm">${esc(s)}</span><button class="del" data-dels="${i}.${j}">✕</button></div>`).join("")}
+      <div class="addline" style="margin-bottom:4px"><input id="newsub${i}" placeholder="подкатегория"><button class="btn sec" data-addsub="${i}" style="margin-top:0">Добавить</button></div>
+    </div>`).join("");
+  document.querySelectorAll("#catManage .edit[data-sub]").forEach(b=> b.onclick=()=>{ const w=$("subw"+b.dataset.sub); w.style.display = w.style.display==="none"?"":"none"; });
+  document.querySelectorAll("#catManage .edit[data-emoji]").forEach(b=> b.onclick=()=>{ const i=+b.dataset.emoji; const e=prompt("Эмодзи для «"+state.cats[i].n+"»:", state.cats[i].e); if(e!==null){ state.cats[i].e=e.trim()||state.cats[i].e; save(); renderCatManage(); } });
+  document.querySelectorAll("#catManage .del[data-delc]").forEach(b=> b.onclick=()=>{
+    const i=+b.dataset.delc; const c=state.cats[i];
+    const used = state.tx.filter(t=>t.cat===c.n).length;
+    if(state.cats.length<=1){ toast("Нельзя удалить последнюю категорию"); return; }
+    if(used){ if(!confirm(`В категории «${c.n}» ${used} трат. Удалить категорию и перенести их в «Прочее»?`)) return;
+      let other = state.cats.find(x=>x.n==="Прочее");
+      if(!other){ other={n:"Прочее",e:"📋",c:"#64748b",subs:[]}; state.cats.push(other); }
+      state.tx.forEach(t=>{ if(t.cat===c.n){ t.cat="Прочее"; t.sub=""; } });
+    } else { if(!confirm(`Удалить категорию «${c.n}»?`)) return; }
+    state.cats = state.cats.filter(x=>x!==c); save(); renderCatManage(); render();
+  });
+  document.querySelectorAll("#catManage .del[data-dels]").forEach(b=> b.onclick=()=>{
+    const [i,j]=b.dataset.dels.split(".").map(Number); const c=state.cats[i]; const s=c.subs[j];
+    c.subs.splice(j,1); state.tx.forEach(t=>{ if(t.cat===c.n && t.sub===s) t.sub=""; }); save(); renderCatManage();
+  });
+  document.querySelectorAll("#catManage [data-addsub]").forEach(b=> b.onclick=()=>{
+    const i=+b.dataset.addsub; const v=$("newsub"+i).value.trim();
+    if(v && !state.cats[i].subs.includes(v)){ state.cats[i].subs.push(v); save(); renderCatManage(); $("subw"+i).style.display=""; }
+  });
+}
+$("addCat").onclick = ()=>{
+  const v=$("newCat").value.trim(); if(!v) return;
+  if(state.cats.some(c=>c.n===v)){ toast("Такая категория уже есть"); return; }
+  state.cats.push({n:v, e:"📋", c:PALETTE[state.cats.length%PALETTE.length], subs:[]});
+  save(); $("newCat").value=""; renderCatManage();
+};
+function renderListManage(){
+  $("vendManage").innerHTML = state.vendors.map((v,i)=>`<div class="setrow"><div class="nm">${esc(v)}</div><button class="del" data-dv="${i}">✕</button></div>`).join("") || `<p class="hint" style="margin:0 0 8px">Пока пусто — добавятся сами при вводе трат.</p>`;
+  $("accManage").innerHTML = state.accounts.map((v,i)=>`<div class="setrow"><div class="nm">${esc(v)}</div><button class="del" data-da="${i}">✕</button></div>`).join("") || `<p class="hint" style="margin:0 0 8px">Пока пусто — добавятся сами при вводе трат.</p>`;
+  document.querySelectorAll("#vendManage .del[data-dv]").forEach(b=> b.onclick=()=>{ state.vendors.splice(+b.dataset.dv,1); save(); renderListManage(); });
+  document.querySelectorAll("#accManage .del[data-da]").forEach(b=> b.onclick=()=>{ state.accounts.splice(+b.dataset.da,1); save(); renderListManage(); });
+}
+$("addVend").onclick = ()=>{ const v=$("newVend").value.trim(); if(v && !state.vendors.includes(v)){ state.vendors.push(v); save(); $("newVend").value=""; renderListManage(); } };
+$("addAcc").onclick = ()=>{ const v=$("newAcc").value.trim(); if(v && !state.accounts.includes(v)){ state.accounts.push(v); save(); $("newAcc").value=""; renderListManage(); } };
+
+/* ===== backup / restore (with photos) ===== */
+async function makeBackup(){ const photos=await photoDB.all(); return JSON.stringify({...state, _photos:photos}, null, 1); }
+$("sBackup").onclick = async ()=>{ const txt=await makeBackup(); dl(new Blob([txt],{type:"application/json"}), "biz-expenses-backup-"+iso(new Date())+".json"); };
+$("sRestore").onclick = ()=> $("sFile").click();
+let pendingImport=null;
+$("sFile").onchange = ()=>{
+  const f=$("sFile").files[0]; if(!f) return;
+  f.text().then(t=>{ try{
+    const s=JSON.parse(t); if(!Array.isArray(s.tx)) throw 0;
+    pendingImport=s;
+    $("impInfo").textContent = `В копии: ${s.tx.length} трат. Сейчас в приложении: ${state.tx.length}.`;
+    $("impOverlay").classList.add("show");
+  }catch(e){ toast("Не похоже на файл копии"); } });
+  $("sFile").value="";
+};
+async function applyPhotos(photos){ for(const [id,url] of Object.entries(photos||{})) await photoDB.set(id,url); }
+function txKey(t){ return t.date+"|"+t.amt+"|"+(t.vendor||"")+"|"+t.cat; }
+$("impMerge").onclick = async ()=>{
+  const s=pendingImport; if(!s) return;
+  const keys=new Set(state.tx.map(txKey)), ids=new Set(state.tx.map(t=>t.id));
+  let added=0;
+  for(const t of s.tx){ if((t.id&&ids.has(t.id))||keys.has(txKey(t))) continue; state.tx.push(t); keys.add(txKey(t)); if(t.id)ids.add(t.id); added++; }
+  (s.cats||[]).forEach(c=>{ const ex=state.cats.find(x=>x.n===c.n); if(!ex) state.cats.push(c); else c.subs.forEach(sub=>{ if(!ex.subs.includes(sub)) ex.subs.push(sub); }); });
+  (s.vendors||[]).forEach(v=>{ if(!state.vendors.includes(v)) state.vendors.push(v); });
+  (s.accounts||[]).forEach(v=>{ if(!state.accounts.includes(v)) state.accounts.push(v); });
+  await applyPhotos(s._photos);
+  state.tx.sort((a,b)=> a.date<b.date?-1:a.date>b.date?1:0);
+  save(); closeImport(); render(); toast(`Добавлено трат: ${added} ✓`);
+};
+$("impReplace").onclick = async ()=>{
+  const s=pendingImport; if(!s) return;
+  if(!confirm(`Заменить? Текущие ${state.tx.length} трат будут стёрты.`)) return;
+  const photos=s._photos; delete s._photos;
+  state=s; state.cats=state.cats||JSON.parse(JSON.stringify(DEFAULT_CATS)); state.vendors=state.vendors||[]; state.accounts=state.accounts||[];
+  save(); await applyPhotos(photos); closeImport(); render(); toast("Восстановлено ✓");
+};
+function closeImport(){ pendingImport=null; $("impOverlay").classList.remove("show"); $("setOverlay").classList.remove("show"); }
+
+/* ===== autosave to file (Chrome/Edge desktop) ===== */
+let fileHandle=null, pendingHandle=null, _fwTimer=null;
+const fsdb = {
+  open(){ return new Promise((res,rej)=>{ const r=indexedDB.open(LS+".fs",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); },
+  async get(k){ const db=await this.open(); return new Promise(res=>{ const t=db.transaction("kv").objectStore("kv").get(k); t.onsuccess=()=>res(t.result||null); t.onerror=()=>res(null); }); },
+  async set(k,v){ const db=await this.open(); return new Promise(res=>{ const t=db.transaction("kv","readwrite").objectStore("kv").put(v,k); t.onsuccess=()=>res(); t.onerror=()=>res(); }); },
+  async del(k){ const db=await this.open(); return new Promise(res=>{ const t=db.transaction("kv","readwrite").objectStore("kv").delete(k); t.onsuccess=()=>res(); t.onerror=()=>res(); }); }
+};
+async function writeToFile(){ if(!fileHandle) return; try{ const w=await fileHandle.createWritable(); await w.write(await makeBackup()); await w.close(); }catch(e){} }
+function scheduleFileWrite(){ if(!fileHandle) return; clearTimeout(_fwTimer); _fwTimer=setTimeout(writeToFile, 1200); }
+async function enableAutosave(){ try{ const h=await showSaveFilePicker({suggestedName:"biz-expenses-autosave.json", types:[{description:"JSON",accept:{"application/json":[".json"]}}]}); fileHandle=h; pendingHandle=null; await fsdb.set("handle",h); await writeToFile(); toast("Автосохранение включено ✓"); renderAutosave(); }catch(e){} }
+async function disableAutosave(){ fileHandle=null; pendingHandle=null; await fsdb.del("handle"); renderAutosave(); toast("Автосохранение выключено"); }
+function renderAutosave(){
+  const el=$("sAutosave"); if(!el) return;
+  if(!("showSaveFilePicker" in window)){ el.innerHTML=`<p class="hint" style="margin:0 0 8px">Запись в файл доступна в Chrome/Edge на компьютере. На телефоне просто скачивай резервную копию.</p>`; return; }
+  if(fileHandle){ el.innerHTML=`<p class="hint" style="margin:0 0 8px">✓ Каждое изменение пишется в файл «${esc(fileHandle.name)}».</p><button class="btn sec" id="sAutoOff" style="margin-top:0">Выключить автосохранение</button>`; $("sAutoOff").onclick=disableAutosave; }
+  else { el.innerHTML=`<button class="btn sec" id="sAutoOn" style="margin-top:0">📁 Автосохранение в файл</button><p class="hint">Выберешь файл один раз — дальше всё пишется туда автоматически (включая фото). Чистка браузера ему не страшна.</p>`; $("sAutoOn").onclick=enableAutosave; }
+}
+(async()=>{ if(!("showSaveFilePicker" in window)) return; const h=await fsdb.get("handle"); if(!h) return;
+  try{ if((await h.queryPermission({mode:"readwrite"}))==="granted"){ fileHandle=h; return; } }catch(e){ return; }
+  pendingHandle=h; const once=async()=>{ document.removeEventListener("pointerdown",once);
+    try{ if(pendingHandle && (await pendingHandle.requestPermission({mode:"readwrite"}))==="granted"){ fileHandle=pendingHandle; pendingHandle=null; writeToFile(); toast("Автосохранение активно ✓"); renderAutosave(); } }catch(e){} };
+  document.addEventListener("pointerdown",once);
+})();
+
+/* ===== xlsx export ===== */
+function crc32(buf){ if(!crc32.t){ crc32.t=new Int32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; crc32.t[n]=c; } } let c=-1; for(let i=0;i<buf.length;i++) c=crc32.t[(c^buf[i])&0xFF]^(c>>>8); return (c^-1)>>>0; }
+function zipStore(files){ const enc=new TextEncoder(); const parts=[],central=[]; let offset=0; const now=new Date();
+  const dt=(now.getHours()<<11)|(now.getMinutes()<<5)|(now.getSeconds()>>1); const dd=((now.getFullYear()-1980)<<9)|((now.getMonth()+1)<<5)|now.getDate();
+  for(const f of files){ const name=enc.encode(f.name), data=enc.encode(f.text); const crc=crc32(data);
+    const lh=new DataView(new ArrayBuffer(30)); lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true); lh.setUint16(6,0x0800,true); lh.setUint16(10,dt,true); lh.setUint16(12,dd,true); lh.setUint32(14,crc,true); lh.setUint32(18,data.length,true); lh.setUint32(22,data.length,true); lh.setUint16(26,name.length,true);
+    parts.push(new Uint8Array(lh.buffer),name,data);
+    const ch=new DataView(new ArrayBuffer(46)); ch.setUint32(0,0x02014b50,true); ch.setUint16(4,20,true); ch.setUint16(6,20,true); ch.setUint16(8,0x0800,true); ch.setUint16(12,dt,true); ch.setUint16(14,dd,true); ch.setUint32(16,crc,true); ch.setUint32(20,data.length,true); ch.setUint32(24,data.length,true); ch.setUint16(28,name.length,true); ch.setUint32(42,offset,true);
+    central.push(new Uint8Array(ch.buffer),name); offset+=30+name.length+data.length; }
+  let cd=0; central.forEach(p=>cd+=p.length);
+  const eo=new DataView(new ArrayBuffer(22)); eo.setUint32(0,0x06054b50,true); eo.setUint16(8,files.length,true); eo.setUint16(10,files.length,true); eo.setUint32(12,cd,true); eo.setUint32(16,offset,true);
+  const all=[...parts,...central,new Uint8Array(eo.buffer)]; let len=0; all.forEach(p=>len+=p.length); const out=new Uint8Array(len); let pos=0; all.forEach(p=>{ out.set(p,pos); pos+=p.length; }); return out; }
+function xesc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function cS(ref,v,b){ return `<c r="${ref}" t="inlineStr"${b?' s="1"':''}><is><t xml:space="preserve">${xesc(v)}</t></is></c>`; }
+function cN(ref,v){ return `<c r="${ref}"><v>${v}</v></c>`; }
+const XC=["A","B","C","D","E","F","G"];
+function exportXlsx(list, label){
+  if(!list.length){ toast("Нет трат для экспорта"); return; }
+  const sorted=[...list].sort((a,b)=> a.date<b.date?-1:1);
+  const heads=["Дата","Категория","Подкатегория","Поставщик","Счёт / карта","Сумма $","Заметка"];
+  const rows=[`<row r="1">${heads.map((h,i)=>cS(XC[i]+"1",h,1)).join("")}</row>`];
+  let r=2;
+  for(const t of sorted){
+    rows.push(`<row r="${r}">`+cS("A"+r,t.date)+cS("B"+r,t.cat)+cS("C"+r,t.sub||"")+cS("D"+r,t.vendor||"")+cS("E"+r,t.account||"")+cN("F"+r,t.amt)+cS("G"+r,t.note||"")+`</row>`); r++;
+  }
+  const tr=r; rows.push(`<row r="${tr}">`+cS("E"+tr,"ИТОГО",1)+`<c r="F${tr}" s="1"><f>SUM(F2:F${r-1})</f><v>${Math.round(list.reduce((s,t)=>s+t.amt,0)*100)/100}</v></c></row>`);
+  const sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="12" customWidth="1"/><col min="2" max="5" width="16" customWidth="1"/><col min="6" max="6" width="11" customWidth="1"/><col min="7" max="7" width="34" customWidth="1"/></cols><sheetData>${rows.join("")}</sheetData></worksheet>`;
+  const files=[
+    {name:"[Content_Types].xml",text:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`},
+    {name:"_rels/.rels",text:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
+    {name:"xl/workbook.xml",text:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${xesc(label).slice(0,31)}" sheetId="1" r:id="rId1"/></sheets></workbook>`},
+    {name:"xl/_rels/workbook.xml.rels",text:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`},
+    {name:"xl/styles.xml",text:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="1"><fill><patternFill patternType="none"/></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs></styleSheet>`},
+    {name:"xl/worksheets/sheet1.xml",text:sheet},
+  ];
+  dl(new Blob([zipStore(files)],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}), label+".xlsx");
+  toast("Файл "+label+".xlsx скачан");
+}
+
+/* ===== misc ===== */
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function dl(blob,name){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500); }
+function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("show"),1900); }
+document.querySelectorAll("[data-close]").forEach(el=> el.onclick=()=> $(el.dataset.close).classList.remove("show"));
+document.querySelectorAll(".overlay").forEach(ov=> ov.addEventListener("click", e=>{ if(e.target===ov) ov.classList.remove("show"); }));
+document.querySelectorAll("nav.tabs button").forEach(b=> b.onclick=()=>{ tab=b.dataset.tab; selCat=null; render(); });
+$("navPrev").onclick = ()=>{ if(tab==="month"){ const [y,m]=selMonth.split("-").map(Number); const d=new Date(y,m-2,1); selMonth=iso(d).slice(0,7); selCat=null; } else { selYear=String(+selYear-1); } render(); };
+$("navNext").onclick = ()=>{ if(tab==="month"){ const [y,m]=selMonth.split("-").map(Number); const d=new Date(y,m,1); selMonth=iso(d).slice(0,7); selCat=null; } else { selYear=String(+selYear+1); } render(); };
+$("fabAdd").onclick = ()=> openTx(null);
+$("gearBtn").onclick = openSettings;
+
+load();
+render();
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
