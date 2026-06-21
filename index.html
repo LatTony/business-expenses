@@ -63,9 +63,10 @@ main{padding:12px 14px}
      background:var(--accent); color:#fff; font-size:30px; border:none; cursor:pointer;
      box-shadow:0 4px 14px rgba(0,0,0,.25)}
 nav.tabs{position:fixed; bottom:0; left:0; right:0; z-index:6; display:flex;
-  background:var(--card); border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom)}
+  background:var(--card); border-top:1px solid var(--line);
+  padding-bottom:max(2px, calc(env(safe-area-inset-bottom) - 14px))}
 nav.tabs button{flex:1; border:none; background:none; color:var(--muted); font-size:13px;
-  padding:12px 0 10px; cursor:pointer; font-weight:600}
+  padding:11px 0 9px; cursor:pointer; font-weight:600}
 nav.tabs button.on{color:var(--accent)}
 .overlay{position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:10; display:none;
   align-items:flex-end; justify-content:center}
@@ -153,16 +154,10 @@ textarea{min-height:70px; resize:vertical; font-family:inherit}
       <label>Subcategory</label>
       <div class="chips" id="subChips"></div>
     </div>
-    <div class="frow">
-      <div><label>Vendor (who / where)</label>
-        <input id="fVendor" list="vendorList" placeholder="Shell, Home Depot…">
-        <datalist id="vendorList"></datalist></div>
-    </div>
-    <div class="frow">
-      <div><label>Account / card (paid with)</label>
-        <input id="fAccount" list="accountList" placeholder="Chase business, cash…">
-        <datalist id="accountList"></datalist></div>
-    </div>
+    <label>Vendor (who / where)</label>
+    <input id="fVendor" autocomplete="off" placeholder="Shell, Home Depot…" style="margin-bottom:11px">
+    <label>Account / card (paid with)</label>
+    <select id="fAccount" style="margin-bottom:11px"></select>
     <label>Note (optional)</label>
     <textarea id="fNote" placeholder="what you bought, details…"></textarea>
     <div class="photo-wrap" id="photoWrap" style="display:none">
@@ -391,24 +386,39 @@ function openTx(id){
   if(t) $("fDate").value = t.date;
   else if(selMonth !== iso(new Date()).slice(0,7)) $("fDate").value = selMonth+"-01";
   else $("fDate").value = iso(new Date());
-  $("fVendor").value = t ? (t.vendor||"") : "";
-  $("fAccount").value = t ? (t.account||"") : "";
   $("fNote").value = t ? (t.note||"") : "";
   formCat = t ? t.cat : (state.cats[0]&&state.cats[0].n);
   formSub = t ? (t.sub||null) : null;
   formPhoto = null; formPhotoChanged = false;
   $("photoWrap").style.display="none"; $("photoDel").style.display="none";
-  refreshDatalists();
+  setupPickers(t);
   renderCatChips();
   $("txDelete").style.display = t ? "" : "none";
   $("txOverlay").classList.add("show");
   if(t && t.photo){ photoDB.get(t.photo).then(url=>{ if(url && editId===id){ formPhoto=url; showPhoto(url); } }); }
   if(!t) setTimeout(()=>$("fAmt").focus(), 100);
 }
-function refreshDatalists(){
-  $("vendorList").innerHTML = state.vendors.map(v=>`<option value="${esc(v)}">`).join("");
-  $("accountList").innerHTML = state.accounts.map(v=>`<option value="${esc(v)}">`).join("");
+let lastAccount = "";
+function buildAccountSelect(cur){
+  let arr = state.accounts.slice();
+  if(cur && !arr.includes(cur)) arr.unshift(cur);
+  $("fAccount").innerHTML = `<option value="">—</option>`
+    + arr.map(v=>`<option ${v===cur?"selected":""}>${esc(v)}</option>`).join("")
+    + `<option value="__add">➕ Add new card / account…</option>`;
+  lastAccount = cur || "";
 }
+function setupPickers(t){
+  $("fVendor").value = t ? (t.vendor||"") : "";
+  buildAccountSelect(t ? (t.account||"") : "");
+}
+$("fAccount").onchange = ()=>{
+  const v = $("fAccount").value;
+  if(v==="__add"){
+    const n = (prompt("Add new card / account:")||"").trim();
+    if(n){ if(!state.accounts.includes(n)){ state.accounts.push(n); save(); } buildAccountSelect(n); }
+    else buildAccountSelect(lastAccount);
+  } else { lastAccount = v; }
+};
 function renderCatChips(){
   $("catChips").innerHTML = state.cats.map(c=>`<div class="ch ${c.n===formCat?"on":""}" data-c="${esc(c.n)}"><span>${c.e}</span>${esc(c.n)}</div>`).join("");
   document.querySelectorAll("#catChips .ch").forEach(el=> el.onclick=()=>{ formCat=el.dataset.c; formSub=null; renderCatChips(); });
@@ -445,7 +455,8 @@ $("txSave").onclick = async ()=>{
   const amt = parseFloat(String($("fAmt").value||"").replace(",","."));
   if(isNaN(amt) || amt<=0){ toast("Enter the amount"); $("fAmt").focus(); return; }
   if(!formCat){ toast("Choose a category"); return; }
-  const vendor = $("fVendor").value.trim(), account = $("fAccount").value.trim();
+  const vendor = $("fVendor").value.trim();
+  let account = $("fAccount").value; account = (account==="__add"?"":account).trim();
   let photoId = editId ? ((state.tx.find(x=>x.id===editId)||{}).photo || null) : null;
   if(formPhotoChanged){
     try{
