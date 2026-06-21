@@ -63,10 +63,9 @@ main{padding:12px 14px}
      background:var(--accent); color:#fff; font-size:30px; border:none; cursor:pointer;
      box-shadow:0 4px 14px rgba(0,0,0,.25)}
 nav.tabs{position:fixed; bottom:0; left:0; right:0; z-index:6; display:flex;
-  background:var(--card); border-top:1px solid var(--line);
-  padding-bottom:max(2px, calc(env(safe-area-inset-bottom) - 14px))}
+  background:var(--card); border-top:1px solid var(--line); padding-bottom:5px}
 nav.tabs button{flex:1; border:none; background:none; color:var(--muted); font-size:13px;
-  padding:11px 0 9px; cursor:pointer; font-weight:600}
+  padding:10px 0 8px; cursor:pointer; font-weight:600}
 nav.tabs button.on{color:var(--accent)}
 .overlay{position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:10; display:none;
   align-items:flex-end; justify-content:center}
@@ -163,7 +162,7 @@ textarea{min-height:70px; resize:vertical; font-family:inherit}
     <div class="photo-wrap" id="photoWrap" style="display:none">
       <img id="photoThumb" class="photo-thumb" alt="receipt">
     </div>
-    <input type="file" id="fPhoto" accept="image/*" capture="environment" hidden>
+    <input type="file" id="fPhoto" accept="image/*" hidden>
     <div class="photo-actions">
       <button class="btn sec" id="photoBtn" style="margin-top:0">📷 Receipt photo</button>
       <button class="btn ghost" id="photoDel" style="margin-top:0; display:none">Remove photo</button>
